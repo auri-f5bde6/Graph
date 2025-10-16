@@ -1,0 +1,6 @@
+[workspace]
+resolver = "3"
+members = ["graph_lib", "hardcoded_distance"]
+
+[workspace.dependencies]
+graph_lib={path = "graph_lib"}

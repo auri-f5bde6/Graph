@@ -1,0 +1,8 @@
+[package]
+name = "hardcoded_distance"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+graph_lib={workspace=true}
+
