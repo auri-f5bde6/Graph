@@ -26,24 +26,6 @@ pub struct Crowding {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ModeName {
-    Bus,
-    #[serde(rename = "cable-car")]
-    CableCar,
-    Dlr,
-    #[serde(rename = "elizabeth-line")]
-    ElizabethLine,
-    #[serde(rename = "national-rail")]
-    NationalRail,
-    Overground,
-    #[serde(rename = "river-bus")]
-    RiverBus,
-    Tram,
-    Tube,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RouteSection {
     #[serde(rename = "$type")]
@@ -130,8 +112,15 @@ pub enum Mode {
     Overground,
     Tram,
     Tube,
+    #[serde(rename = "international-rail")]
+    InternationalRail,
+    Plane,
+    #[serde(rename = "cable-car")]
+    CableCar,
+    #[serde(rename = "river-bus")]
+    RiverBus,
 }
-
+pub type ModeName = Mode;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrderedLineRoute {
@@ -152,7 +141,7 @@ pub struct Station {
     pub top_most_parent_id: Option<String>,
     pub modes: Vec<Mode>,
     pub stop_type: StopType,
-    pub zone: String,
+    pub zone: Option<String>,
     pub lines: Vec<Line>,
     pub status: bool,
     pub id: String,
@@ -194,6 +183,7 @@ pub enum StopType {
     NaptanMetroStation,
     #[serde(rename = "TransportInterchange")]
     TransportInterchange,
+    NaptanRailStation,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

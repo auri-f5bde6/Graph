@@ -38,6 +38,7 @@ pub struct Visitor<F: Distance> {
     queue: VecDeque<VisitorState>,
     target: RcNode,
     distance: F,
+    pub stop_retrying_after: i32,
 }
 impl<F: Distance> Visitor<F> {
     pub fn new(target: RcNode, distance: F) -> Self {
@@ -45,9 +46,11 @@ impl<F: Distance> Visitor<F> {
             queue: VecDeque::new(),
             target,
             distance,
+            stop_retrying_after: 0,
         }
     }
     pub fn visit(&mut self, node: RcNode) -> Vec<VisitorState> {
+        let mut retrying_counter = 0;
         let mut result = vec![];
         self.queue.push_front(VisitorState {
             length: 0,
@@ -59,10 +62,16 @@ impl<F: Distance> Visitor<F> {
                 result.push(s);
                 continue;
             }
+            if retrying_counter > self.stop_retrying_after {
+                break;
+            }
+            if result.len() > 0 {
+                retrying_counter += 1;
+            }
             for n in &s.current_node.borrow().neighbours {
                 let neighbour = n.upgrade().unwrap();
                 if !s.has_visited(&neighbour) {
-                    self.queue.push_front(s.visit(
+                    self.queue.push_back(s.visit(
                         neighbour.clone(),
                         self.distance.distance_between(&s.current_node, &neighbour),
                     ));

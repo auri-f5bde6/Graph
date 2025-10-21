@@ -1,5 +1,5 @@
 mod generated;
-use crate::generated::{Direction, ModeName, RouteSequence, ServiceType, ServiceTypeEnum};
+use crate::generated::{Direction, ModeName, RouteSequence, ServiceType, ServiceTypeEnum, Station};
 use generated::Route;
 use graph_lib::node::{HardcodedDistance, Node, RcNode};
 use graph_lib::visitor::{Visitor, VisitorState};
@@ -26,51 +26,77 @@ fn main() {
         .expect("Failed to access tfl api")
         .json()
         .unwrap();
-
     for r in routes.iter().filter(|r| {
         matches!(r.mode_name, ModeName::Tube) || matches!(r.mode_name, ModeName::ElizabethLine)
     }) {
-
-        let routeSeq: RouteSequence = reqwest::blocking::get(format!(
+        let route_seq: RouteSequence = reqwest::blocking::get(format!(
             "https://api.tfl.gov.uk/line/{}/route/sequence/all",
             r.id
         ))
         .expect("Failed to access tfl api")
         .json()
         .unwrap();
-        for station in routeSeq.stations {
-            if station.name.contains("euston") {
-                println!("Euston: {}", &station.id)
-            }
-            if station.name.contains("piccadilly") {
-                println!("Piccadilly: {}", &station.id)
-            }
-            stations.insert(
-                station.id.clone(),
-                StationInfo::new(station.id, station.name.clone()),
-            );
-        }
-        println!("{:?}", stations);
-        for routes in routeSeq.stop_point_sequences {
+        for routes in route_seq.stop_point_sequences {
             for i in (1..routes.stop_point.len()) {
-                println!("{}", &routes.stop_point[i - 1].id);
-                let a = stations.get(&routes.stop_point[i - 1].id).unwrap();
-                let b = stations.get(&routes.stop_point[i].id).unwrap();
-                a.node.borrow_mut().add_neighbours(&b.node);
+                let node_a = get_or_insert_node(&mut stations, &routes.stop_point[i - 1]);
+                let node_b = get_or_insert_node(&mut stations, &routes.stop_point[i]);
+                node_a.borrow_mut().add_neighbours(&node_b);
+                distance.add_neighbour(&node_a, &node_b, 1);
             }
         }
     }
-    /*let mut visitor = Visitor::new(b, distance);
+    let mut visitor = Visitor::new(stations.get("940GZZLUPCC").unwrap().node.clone(), distance); // Piccadilly 940GZZLUPCC
+    visitor.stop_retrying_after = 1000;
     // Starting from E
-    let possible_paths = visitor.visit(e);
-    if let Some(result) = VisitorState::get_shortest(&possible_paths) {
-        print!("{}", result.visited[0].borrow().get_id());
+    let possible_paths = visitor.visit(stations.get("940GZZLUEUS").unwrap().node.clone()); // Euston 940GZZLUEUS
+    for result in &possible_paths {
+        print!(
+            "{}",
+            stations
+                .get(result.visited[0].borrow().get_id())
+                .unwrap()
+                .name
+        );
         for node in result.visited.iter().skip(1) {
-            print!(" -> {}", node.borrow().get_id());
+            print!(" -> {}", stations.get(node.borrow().get_id()).unwrap().name);
+        }
+        println!();
+        println!("Length: {}", result.length);
+    }
+    println!("\nShortest:");
+    if let Some(result) = VisitorState::get_shortest(&possible_paths) {
+        print!(
+            "{}",
+            stations
+                .get(result.visited[0].borrow().get_id())
+                .unwrap()
+                .name
+        );
+        for node in result.visited.iter().skip(1) {
+            print!(" -> {}", stations.get(node.borrow().get_id()).unwrap().name);
         }
         println!();
         println!("Length: {}", result.length);
     } else {
         println!("No vaid path between two point exsist")
-    }*/
+    }
+}
+
+fn get_or_insert_node(
+    stations_map: &mut HashMap<String, StationInfo>,
+    station: &Station,
+) -> RcNode {
+    if let Some(station_a) = stations_map.get(&*station.id) {
+        station_a.node.clone()
+    } else {
+        let n = Node::new(station.id.clone());
+        stations_map.insert(
+            station.id.clone(),
+            StationInfo {
+                name: station.name.clone(),
+                node: n.clone(),
+            },
+        );
+        n
+    }
 }
